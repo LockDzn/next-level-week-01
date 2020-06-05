@@ -1,20 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Feather as Icon } from '@expo/vector-icons';
-import { View, ImageBackground, Text, Image, StyleSheet, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, ImageBackground, Text, Image, StyleSheet, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { RectButton } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
+import RNPickerSelect from 'react-native-picker-select';
+
+interface IBGEUFResponse {
+  sigla: string;
+}
+
+interface IBGECityResponse {
+  nome: string;
+}
+
+interface Picker {
+  label: string;
+  value: string;
+}
 
 const Home = () => {
-    const [uf, setUf] = useState('');
-    const [city, setCity] = useState('');
+    const [ufs, setUfs] = useState<Picker[]>([]);
+    const [citys, setCitys] = useState<Picker[]>([]);
+
+    const [selectedUf, setSelectedUf] = useState('0');
+    const [selectedCity, setSelectedCity] = useState('0');
 
     const navigation = useNavigation();
 
-    function handleNavigateToPoints() {
-        navigation.navigate('Points', {
-          uf,
-          city,
+    useEffect(() => {
+      axios.get<IBGEUFResponse[]>('https://servicodados.ibge.gov.br/api/v1/localidades/estados').then(response => {
+        const ufInitials = response.data.map(uf => {
+          return {
+            label: uf.sigla, 
+            value:  uf.sigla
+          }
+        })
+        setUfs(ufInitials)
+      })
+    }, []);
+    
+    useEffect(() => {
+      if(selectedUf === '0') return;
+
+      axios.get<IBGECityResponse[]>(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${selectedUf}/municipios`).then(response => {
+          const cityNames = response.data.map(city => {
+            return {
+              label: city.nome, 
+              value:  city.nome
+            }
+          });
+
+          setCitys(cityNames);
         });
+      }, [selectedUf])
+
+    function handleNavigateToPoints() {
+      if(!selectedCity || !selectedUf) return Alert.alert('Ops...', 'Selecione uma UF e uma cidade!');
+        
+      navigation.navigate('Points', {
+        city: selectedCity,
+        uf: selectedUf,
+      });
+    }
+
+    function handleSelectUf(uf: string) {
+      setSelectedUf(uf);
+    }
+
+    function handleSelectCity(city: string) {
+      setSelectedCity(city);
     }
 
     return (
@@ -36,33 +91,40 @@ const Home = () => {
             </View>
 
             <View style={styles.footer}>
-
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Digite a UF"
-                  value={uf}
-                  maxLength={2}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                  onChangeText={setUf}
+              <View style={styles.select}>
+                <RNPickerSelect
+                  itemKey="uf"
+                  style={styles}
+                  placeholder={{
+                    label: "Selecione uma UF"
+                  }}
+                  value={selectedUf}
+                  onValueChange={handleSelectUf}
+                  items={ufs}
                 />
-                <TextInput 
-                  style={styles.input} 
-                  placeholder="Digite a cidade"
-                  value={city}
-                  autoCorrect={false}
-                  onChangeText={setCity}
+              </View>
+              <View style={styles.select}>
+                <RNPickerSelect
+                  itemKey="city"
+                  style={styles}
+                  placeholder={{
+                    label: selectedUf ? 'Selecione a cidade' : 'Selecione uma UF primeiro'
+                  }}
+                  value={selectedCity}
+                  onValueChange={handleSelectCity}
+                  items={citys}
                 />
+              </View>
 
-                <RectButton style={styles.button} onPress={handleNavigateToPoints}>
-                    <View style={styles.buttonIcon}>
-                        <Text>
-                            <Icon name='arrow-right' color='#fff' size={24} />
-                        </Text>
-                    </View>
-                    <Text style={styles.buttonText}>
-                        Entrar
-                    </Text>
+              <RectButton style={styles.button} onPress={handleNavigateToPoints}>
+                  <View style={styles.buttonIcon}>
+                      <Text>
+                          <Icon name='arrow-right' color='#fff' size={24} />
+                      </Text>
+                  </View>
+                  <Text style={styles.buttonText}>
+                      Entrar
+                  </Text>
                 </RectButton>
             </View>
         </ImageBackground>
@@ -100,7 +162,11 @@ const styles = StyleSheet.create({
   
     footer: {},
   
-    select: {},
+    select: {
+      borderRadius: 10, 
+      marginBottom: 8, 
+      overflow: 'hidden',
+    },
   
     input: {
       height: 60,
@@ -136,7 +202,20 @@ const styles = StyleSheet.create({
       color: '#FFF',
       fontFamily: 'Roboto_500Medium',
       fontSize: 16,
-    }
+    },
+
+    inputIOS: {
+      height: 60,
+      backgroundColor: '#FFF',
+      paddingHorizontal: 24,
+      fontSize: 16,
+    },
+    inputAndroid: {
+      height: 60,
+      backgroundColor: '#FFF',
+      paddingHorizontal: 24,
+      fontSize: 16,
+    },
   });
 
 export default Home;
