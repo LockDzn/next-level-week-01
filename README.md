@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img alt="NextLevelWeek" title="#delicinha" src=".github/logo.svg" width="150px" />
+    <img alt="NextLevelWeek" title="#delicinha" src=".github/logo.svg" width="200px" />
 </h1>
 
 <h4 align="center">
